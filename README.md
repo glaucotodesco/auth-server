@@ -4,10 +4,11 @@ Servidor de autenticação e autorização com Spring Boot, JWT e banco H2.
 
 ## Funcionalidades
 
-- Autenticação JWT
+- Autenticação JWT com roles incluídas no token
 - Autorização baseada em roles (USER/ADMIN)
 - Banco H2 em memória
 - Usuários padrão pré-configurados
+- Token autocontido (sem consulta ao banco para verificar roles)
 
 ## Execução
 
@@ -43,6 +44,17 @@ mvnw.cmd spring-boot:run
 curl -X POST http://localhost:8080/api/auth/signin \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"admin123"}'
+```
+
+**Resposta:**
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "type": "Bearer",
+  "id": 1,
+  "username": "admin",
+  "roles": ["ROLE_ADMIN"]
+}
 ```
 
 ### Acesso com Token

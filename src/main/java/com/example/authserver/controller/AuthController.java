@@ -16,7 +16,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -42,11 +44,14 @@ public class AuthController {
                 new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
         
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        String jwt = jwtUtils.generateJwtToken(loginRequest.getUsername());
-        
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+        String jwt = jwtUtils.generateJwtToken(userDetails);
         
-        return ResponseEntity.ok(new JwtResponse(jwt, userDetails.getId(), userDetails.getUsername()));
+        List<String> roles = userDetails.getAuthorities().stream()
+                .map(item -> item.getAuthority())
+                .collect(Collectors.toList());
+        
+        return ResponseEntity.ok(new JwtResponse(jwt, userDetails.getId(), userDetails.getUsername(), roles));
     }
     
     @PostMapping("/signup")
@@ -117,11 +122,13 @@ public class AuthController {
         private String type = "Bearer";
         private Long id;
         private String username;
+        private List<String> roles;
         
-        public JwtResponse(String accessToken, Long id, String username) {
+        public JwtResponse(String accessToken, Long id, String username, List<String> roles) {
             this.token = accessToken;
             this.id = id;
             this.username = username;
+            this.roles = roles;
         }
         
         public String getAccessToken() { return token; }
@@ -135,5 +142,8 @@ public class AuthController {
         
         public String getUsername() { return username; }
         public void setUsername(String username) { this.username = username; }
+        
+        public List<String> getRoles() { return roles; }
+        public void setRoles(List<String> roles) { this.roles = roles; }
     }
 }
