@@ -1,6 +1,5 @@
 package com.example.authserver.security;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -17,49 +16,53 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @Configuration
 @EnableMethodSecurity(prePostEnabled = true)
 public class WebSecurityConfig {
-    @Autowired
-    UserDetailsServiceImpl userDetailsService;
-    
+
+    private final UserDetailsServiceImpl userDetailsService;
+
+    public WebSecurityConfig(UserDetailsServiceImpl userDetailsService) {
+        this.userDetailsService = userDetailsService;
+    }
+
     @Bean
     public AuthTokenFilter authenticationJwtTokenFilter() {
         return new AuthTokenFilter();
     }
-    
+
     @Bean
-    public DaoAuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(userDetailsService);
-        authProvider.setPasswordEncoder(passwordEncoder());
+    public DaoAuthenticationProvider authenticationProvider(
+        UserDetailsServiceImpl userDetailsService,
+        PasswordEncoder passwordEncoder) {
+
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider(userDetailsService);
+        authProvider.setPasswordEncoder(passwordEncoder);
         return authProvider;
     }
-    
+
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
         return authConfig.getAuthenticationManager();
     }
-    
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-    
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authz -> authz
-                .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/h2-console/**").permitAll()
-                .requestMatchers("/api/test/all").permitAll()
+                .requestMatchers("/api/auth/**", "/h2-console/**", "/api/test/all").permitAll()
                 .requestMatchers("/api/test/admin").hasRole("ADMIN")
                 .requestMatchers("/api/test/user").hasAnyRole("USER", "ADMIN")
                 .anyRequest().authenticated()
             )
             .headers(headers -> headers.frameOptions(frameOptions -> frameOptions.disable()));
-        
-        http.authenticationProvider(authenticationProvider());
+
+        http.authenticationProvider(authenticationProvider(userDetailsService, passwordEncoder()));
         http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
-        
+
         return http.build();
     }
 }
